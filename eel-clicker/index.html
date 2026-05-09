@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eel Clicker</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #050d1a;
+      color: #e0f0ff;
+      font-family: 'Segoe UI', sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #header {
+      background: #0a1628;
+      border-bottom: 2px solid #0d3b6e;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 30px;
+      flex-shrink: 0;
+    }
+
+    #header h1 { font-size: 1.4rem; color: #48cae4; letter-spacing: 3px; }
+
+    .stat { display: flex; flex-direction: column; }
+    .stat-label { font-size: 0.65rem; color: #6a9ec5; text-transform: uppercase; letter-spacing: 1px; }
+    .stat-value { font-size: 1rem; font-weight: bold; color: #f4a261; }
+
+    #main { display: flex; flex: 1; overflow: hidden; }
+
+    /* Left panel */
+    #left-panel {
+      width: 210px;
+      background: #080f1e;
+      border-right: 1px solid #0d2a4a;
+      overflow-y: auto;
+      padding: 12px 10px;
+      flex-shrink: 0;
+    }
+
+    #left-panel h3 {
+      font-size: 0.7rem; color: #6a9ec5; text-transform: uppercase;
+      letter-spacing: 2px; margin-bottom: 10px; padding-bottom: 6px;
+      border-bottom: 1px solid #0d2a4a;
+    }
+
+    .owned-building {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 8px; margin-bottom: 4px;
+      background: #0d1b2a; border-radius: 6px; font-size: 0.82rem;
+    }
+    .owned-building .bcount {
+      background: #0a3d6b; color: #48cae4; padding: 2px 8px;
+      border-radius: 10px; font-weight: bold; min-width: 30px; text-align: center;
+    }
+    .empty-empire { font-size: 0.78rem; color: #3a5a7a; padding: 8px; text-align: center; }
+
+    /* Center */
+    #center {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      position: relative; overflow: hidden;
+      background: radial-gradient(ellipse at center, #081428 0%, #050d1a 70%);
+    }
+
+    /* Bubbles background */
+    .bubble {
+      position: absolute; border-radius: 50%;
+      background: rgba(72, 202, 228, 0.06);
+      animation: rise linear infinite;
+    }
+    @keyframes rise {
+      0% { transform: translateY(100vh) scale(0); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 0.5; }
+      100% { transform: translateY(-100px) scale(1); opacity: 0; }
+    }
+
+    #eel-wrapper {
+      position: relative; cursor: pointer; user-select: none;
+      z-index: 10;
+    }
+
+    #eel-svg {
+      width: 200px; height: 230px;
+      animation: eel-float 3.5s ease-in-out infinite;
+      filter: drop-shadow(0 0 12px rgba(72, 202, 228, 0.25));
+      transition: filter 0.2s;
+    }
+
+    #eel-wrapper:hover #eel-svg {
+      filter: drop-shadow(0 0 24px rgba(72, 202, 228, 0.6));
+    }
+
+    @keyframes eel-float {
+      0%, 100% { transform: translateY(0px) rotate(-1.5deg); }
+      50% { transform: translateY(-14px) rotate(1.5deg); }
+    }
+
+    @keyframes eel-click {
+      0%   { transform: scale(1) rotate(0deg); }
+      20%  { transform: scale(0.88) rotate(-8deg); }
+      50%  { transform: scale(1.08) rotate(5deg); }
+      75%  { transform: scale(0.96) rotate(-2deg); }
+      100% { transform: scale(1) rotate(0deg); }
+    }
+
+    #eel-wrapper.clicked #eel-svg {
+      animation: eel-click 0.35s ease forwards;
+    }
+
+    .click-text {
+      position: fixed; pointer-events: none;
+      font-weight: bold; color: #f4a261; font-size: 1.1rem;
+      text-shadow: 0 0 8px rgba(244, 162, 97, 0.8);
+      animation: float-up 0.9s ease-out forwards;
+      z-index: 200; white-space: nowrap;
+    }
+
+    @keyframes float-up {
+      0%   { opacity: 1; transform: translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateY(-70px) scale(1.2); }
+    }
+
+    #milestone {
+      margin-top: 16px; font-size: 0.85rem;
+      color: #48cae4; opacity: 0.75; z-index: 10;
+    }
+
+    /* Right panel */
+    #right-panel {
+      width: 290px; background: #080f1e;
+      border-left: 1px solid #0d2a4a;
+      display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0;
+    }
+
+    #tabs { display: flex; border-bottom: 1px solid #0d2a4a; }
+
+    .tab-btn {
+      flex: 1; padding: 11px; background: none; border: none;
+      color: #6a9ec5; cursor: pointer; font-size: 0.8rem;
+      letter-spacing: 1px; text-transform: uppercase; transition: all 0.2s;
+      border-bottom: 2px solid transparent;
+    }
+    .tab-btn.active { color: #48cae4; border-bottom-color: #48cae4; background: #0d1b2a; }
+    .tab-btn:hover:not(.active) { background: #0d1b2a; color: #a0c4d8; }
+
+    .tab-content { display: none; flex: 1; overflow-y: auto; padding: 10px; }
+    .tab-content.active { display: block; }
+
+    .shop-item {
+      background: #0d1b2a; border: 1px solid #0d2a4a; border-radius: 8px;
+      padding: 10px; margin-bottom: 8px; cursor: pointer; transition: all 0.15s;
+    }
+    .shop-item:hover:not(.unaffordable):not(.purchased) {
+      border-color: #48cae4; background: #102235;
+      transform: translateX(2px);
+    }
+    .shop-item.unaffordable { opacity: 0.38; cursor: not-allowed; }
+    .shop-item.purchased { opacity: 0.45; cursor: default; border-color: #1a3a1a; }
+
+    .item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .item-name { font-size: 0.88rem; font-weight: bold; color: #e0f0ff; }
+    .item-cost { font-size: 0.82rem; color: #f4a261; font-weight: bold; white-space: nowrap; }
+    .item-desc { font-size: 0.73rem; color: #6a9ec5; line-height: 1.3; }
+    .item-rate { font-size: 0.72rem; color: #48cae4; margin-top: 3px; }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #050d1a; }
+    ::-webkit-scrollbar-thumb { background: #0d3b6e; border-radius: 2px; }
+
+    #notif {
+      position: fixed; bottom: 20px; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #0a2a4a; border: 1px solid #48cae4; border-radius: 8px;
+      padding: 9px 20px; color: #e0f0ff; font-size: 0.85rem;
+      transition: transform 0.3s ease; z-index: 999; pointer-events: none;
+    }
+    #notif.show { transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <h1>🐍 EEL CLICKER</h1>
+  <div class="stat">
+    <span class="stat-label">Durians</span>
+    <span class="stat-value" id="s-count">0</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Per Second</span>
+    <span class="stat-value" id="s-ps">0/s</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Per Click</span>
+    <span class="stat-value" id="s-pc">1</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">All Time</span>
+    <span class="stat-value" id="s-at">0</span>
+  </div>
+</div>
+
+<div id="main">
+  <div id="left-panel">
+    <h3>Your Empire</h3>
+    <div id="owned-list"></div>
+  </div>
+
+  <div id="center">
+    <div id="eel-wrapper">
+      <svg id="eel-svg" viewBox="0 0 200 230" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="bg" cx="45%" cy="35%" r="65%">
+            <stop offset="0%" stop-color="#52d68a"/>
+            <stop offset="100%" stop-color="#1a8a4a"/>
+          </radialGradient>
+          <radialGradient id="belly" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#c8f8dc"/>
+            <stop offset="100%" stop-color="#6ae8a0"/>
+          </radialGradient>
+          <radialGradient id="eyeW" cx="38%" cy="32%" r="65%">
+            <stop offset="0%" stop-color="#ffffff"/>
+            <stop offset="100%" stop-color="#d8f0ff"/>
+          </radialGradient>
+        </defs>
+
+        <!-- Tail fins -->
+        <ellipse cx="100" cy="215" rx="14" ry="18" fill="#167a3e"/>
+        <path d="M 86 210 Q 62 228 80 205 Z" fill="#167a3e"/>
+        <path d="M 114 210 Q 138 228 120 205 Z" fill="#167a3e"/>
+
+        <!-- Body -->
+        <ellipse cx="100" cy="158" rx="28" ry="58" fill="url(#bg)"/>
+        <ellipse cx="100" cy="162" rx="16" ry="46" fill="url(#belly)" opacity="0.55"/>
+
+        <!-- Body stripes -->
+        <ellipse cx="100" cy="135" rx="27" ry="5.5" fill="#125e32" opacity="0.4"/>
+        <ellipse cx="100" cy="158" rx="28" ry="5.5" fill="#125e32" opacity="0.4"/>
+        <ellipse cx="100" cy="180" rx="27" ry="5" fill="#125e32" opacity="0.4"/>
+
+        <!-- Side fins -->
+        <path d="M 72 138 Q 50 115 64 150 Q 72 145 79 140 Z" fill="#167a3e" opacity="0.85"/>
+        <path d="M 128 138 Q 150 115 136 150 Q 128 145 121 140 Z" fill="#167a3e" opacity="0.85"/>
+
+        <!-- Neck -->
+        <ellipse cx="100" cy="97" rx="22" ry="16" fill="url(#bg)"/>
+
+        <!-- Head -->
+        <ellipse cx="100" cy="68" rx="42" ry="48" fill="url(#bg)"/>
+        <!-- Head highlight -->
+        <ellipse cx="86" cy="52" rx="22" ry="20" fill="#72e8a8" opacity="0.28"/>
+        <!-- Face light -->
+        <ellipse cx="100" cy="74" rx="30" ry="34" fill="url(#belly)" opacity="0.38"/>
+
+        <!-- Eyes white -->
+        <circle cx="76" cy="58" r="16" fill="url(#eyeW)"/>
+        <circle cx="124" cy="58" r="16" fill="url(#eyeW)"/>
+        <!-- Iris -->
+        <circle cx="79" cy="59" r="11" fill="#1a3060"/>
+        <circle cx="127" cy="59" r="11" fill="#1a3060"/>
+        <!-- Pupil -->
+        <circle cx="80" cy="58" r="7.5" fill="#060e20"/>
+        <circle cx="128" cy="58" r="7.5" fill="#060e20"/>
+        <!-- Main shine -->
+        <circle cx="75" cy="53" r="4" fill="white" opacity="0.92"/>
+        <circle cx="123" cy="53" r="4" fill="white" opacity="0.92"/>
+        <!-- Small shine -->
+        <circle cx="84" cy="63" r="1.8" fill="white" opacity="0.55"/>
+        <circle cx="132" cy="63" r="1.8" fill="white" opacity="0.55"/>
+
+        <!-- Eyebrows -->
+        <path d="M 62 44 Q 76 37 90 44" stroke="#125e32" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <path d="M 110 44 Q 124 37 138 44" stroke="#125e32" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+        <!-- Nose -->
+        <circle cx="92" cy="76" r="2.5" fill="#125e32" opacity="0.45"/>
+        <circle cx="108" cy="76" r="2.5" fill="#125e32" opacity="0.45"/>
+
+        <!-- Smile -->
+        <path d="M 80 94 Q 100 112 120 94" stroke="#125e32" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+        <!-- Teeth -->
+        <rect x="89" y="94" width="8" height="7" rx="2" fill="white" opacity="0.92"/>
+        <rect x="103" y="94" width="8" height="7" rx="2" fill="white" opacity="0.92"/>
+
+        <!-- Cheeks -->
+        <circle cx="60" cy="76" r="11" fill="#ff8fa3" opacity="0.28"/>
+        <circle cx="140" cy="76" r="11" fill="#ff8fa3" opacity="0.28"/>
+
+        <!-- Sparkles -->
+        <text x="22" y="38" font-size="13" opacity="0.55">✨</text>
+        <text x="155" y="32" font-size="11" opacity="0.45">✨</text>
+        <text x="10" y="85" font-size="10" opacity="0.35">💧</text>
+        <text x="168" y="90" font-size="10" opacity="0.35">💧</text>
+      </svg>
+    </div>
+    <div id="milestone">Click the eel to earn durians!</div>
+  </div>
+
+  <div id="right-panel">
+    <div id="tabs">
+      <button class="tab-btn active" onclick="switchTab('upgrades')">Upgrades</button>
+      <button class="tab-btn" onclick="switchTab('shop')">Shop</button>
+    </div>
+    <div id="upgrades-tab" class="tab-content active"></div>
+    <div id="shop-tab" class="tab-content"></div>
+  </div>
+</div>
+
+<div id="notif"></div>
+
+<script>
+  // ── DATA ────────────────────────────────────────────────
+  const BUILDINGS = [
+    { id:0, name:"Durian Seedling",    emoji:"🌱", desc:"A tiny seedling dripping with sap.",               baseCost:15,      baseRate:0.1  },
+    { id:1, name:"Durian Tree",        emoji:"🌳", desc:"A mature tree heavy with spiky fruit.",             baseCost:120,     baseRate:0.6  },
+    { id:2, name:"Durian Grove",       emoji:"🌲", desc:"A fragrant grove tended by the eel.",              baseCost:1300,    baseRate:5    },
+    { id:3, name:"Durian Farm",        emoji:"🏡", desc:"Organized rows of durian production.",             baseCost:14000,   baseRate:22   },
+    { id:4, name:"Durian Plantation",  emoji:"🏭", desc:"Industrial-scale spiky operations.",               baseCost:150000,  baseRate:110  },
+    { id:5, name:"Durian Megafarm",    emoji:"🌍", desc:"You supply durians to entire continents.",         baseCost:1600000, baseRate:600  },
+    { id:6, name:"Durian Singularity", emoji:"🌌", desc:"Reality itself is made of durians now.",           baseCost:20000000,baseRate:4000 },
+  ];
+
+  const UPGRADES = [
+    { id:0, name:"Eel Polish",          emoji:"✨", desc:"Freshly polished eel. Clicks 2× more effective.",     cost:75,       type:"click", mult:2,  unlock:0       },
+    { id:1, name:"Slime Boost",         emoji:"💧", desc:"Eel slime improves grip. 3× click power.",            cost:600,      type:"click", mult:3,  unlock:75      },
+    { id:2, name:"Electric Eel Mode",   emoji:"⚡", desc:"ZAP! The eel shocks out 5× more durians.",            cost:7000,     type:"click", mult:5,  unlock:600     },
+    { id:3, name:"Eel Overdrive",       emoji:"🔥", desc:"Maximum eel energy. 10× click power.",                cost:80000,    type:"click", mult:10, unlock:7000    },
+    { id:4, name:"Durian Frenzy",       emoji:"🍈", desc:"Workers are motivated by the smell. 2× production.", cost:300,      type:"prod",  mult:2,  unlock:0       },
+    { id:5, name:"Spiky Strategy",      emoji:"📈", desc:"Optimize the spiky supply chain. 3× production.",    cost:5000,     type:"prod",  mult:3,  unlock:300     },
+    { id:6, name:"Ancient Eel Lore",    emoji:"📜", desc:"Forbidden secrets of the deep. 5× production.",      cost:60000,    type:"prod",  mult:5,  unlock:5000    },
+    { id:7, name:"Durian Ascension",    emoji:"🌌", desc:"One with the durian. 10× all production.",           cost:1500000,  type:"prod",  mult:10, unlock:60000   },
+    { id:8, name:"Eel Whisperer",       emoji:"🎵", desc:"The eel sings. All clicks become legendary. 20×.",   cost:5000000,  type:"click", mult:20, unlock:1500000 },
+  ];
+
+  // ── STATE ────────────────────────────────────────────────
+  const state = {
+    durians: 0,
+    total: 0,
+    clickMult: 1,
+    prodMult: 1,
+    buildings: new Array(BUILDINGS.length).fill(0),
+    bought: new Set(),
+  };
+
+  // ── HELPERS ──────────────────────────────────────────────
+  function fmt(n) {
+    if (n >= 1e15) return (n/1e15).toFixed(2)+"Qa";
+    if (n >= 1e12) return (n/1e12).toFixed(2)+"T";
+    if (n >= 1e9)  return (n/1e9).toFixed(2)+"B";
+    if (n >= 1e6)  return (n/1e6).toFixed(2)+"M";
+    if (n >= 1e3)  return (n/1e3).toFixed(1)+"K";
+    return Math.floor(n).toLocaleString();
+  }
+
+  function buildingCost(id) {
+    return Math.floor(BUILDINGS[id].baseCost * Math.pow(1.15, state.buildings[id]));
+  }
+
+  function perSecond() {
+    let s = 0;
+    BUILDINGS.forEach(b => s += b.baseRate * state.buildings[b.id]);
+    return s * state.prodMult;
+  }
+
+  function clickPower() { return state.clickMult; }
+
+  // ── ACTIONS ───────────────────────────────────────────────
+  function clickEel(e) {
+    const p = clickPower();
+    state.durians += p;
+    state.total += p;
+
+    // floating text
+    const el = document.createElement("div");
+    el.className = "click-text";
+    el.textContent = `+${fmt(p)} 🍈`;
+    el.style.left = (e.clientX - 30) + "px";
+    el.style.top  = (e.clientY - 20) + "px";
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 950);
+
+    // wiggle
+    const w = document.getElementById("eel-wrapper");
+    w.classList.remove("clicked");
+    void w.offsetWidth;
+    w.classList.add("clicked");
+    setTimeout(() => w.classList.remove("clicked"), 350);
+
+    render();
+  }
+
+  function buyBuilding(id) {
+    const cost = buildingCost(id);
+    if (state.durians < cost) return;
+    state.durians -= cost;
+    state.buildings[id]++;
+    notify(`Bought ${BUILDINGS[id].emoji} ${BUILDINGS[id].name}!`);
+    render();
+  }
+
+  function buyUpgrade(id) {
+    if (state.bought.has(id)) return;
+    const u = UPGRADES[id];
+    if (state.durians < u.cost) return;
+    state.durians -= u.cost;
+    state.bought.add(id);
+    if (u.type === "click") state.clickMult *= u.mult;
+    if (u.type === "prod")  state.prodMult  *= u.mult;
+    notify(`Unlocked: ${u.emoji} ${u.name}!`);
+    render();
+  }
+
+  // ── RENDER ────────────────────────────────────────────────
+  function render() {
+    const ps = perSecond();
+    const pc = clickPower();
+    document.getElementById("s-count").textContent = fmt(state.durians);
+    document.getElementById("s-ps").textContent    = fmt(ps) + "/s";
+    document.getElementById("s-pc").textContent    = fmt(pc);
+    document.getElementById("s-at").textContent    = fmt(state.total);
+
+    // milestone
+    const t = state.total;
+    let msg = "Click the eel to earn durians!";
+    if      (t >= 10000000)  msg = "You are the Durian God 🌌";
+    else if (t >= 1000000)   msg = "The world bows to your durians 👑";
+    else if (t >= 100000)    msg = "The planet smells of durian 🌍";
+    else if (t >= 10000)     msg = "A durian empire rises... 🏭";
+    else if (t >= 1000)      msg = "The eel is very pleased 😊";
+    else if (t >= 100)       msg = "More! The eel demands more!";
+    document.getElementById("milestone").textContent = msg;
+
+    renderEmpire();
+    renderUpgrades();
+    renderShop();
+  }
+
+  function renderEmpire() {
+    const el = document.getElementById("owned-list");
+    el.innerHTML = "";
+    let any = false;
+    BUILDINGS.forEach(b => {
+      if (!state.buildings[b.id]) return;
+      any = true;
+      el.innerHTML += `<div class="owned-building">
+        <span>${b.emoji} ${b.name}</span>
+        <span class="bcount">${state.buildings[b.id]}</span>
+      </div>`;
+    });
+    if (!any) el.innerHTML = `<p class="empty-empire">No buildings yet.<br>Buy some in the Shop!</p>`;
+  }
+
+  function renderUpgrades() {
+    const el = document.getElementById("upgrades-tab");
+    el.innerHTML = "";
+    let shown = 0;
+    UPGRADES.forEach(u => {
+      if (state.total < u.unlock && !state.bought.has(u.id)) return;
+      shown++;
+      const bought = state.bought.has(u.id);
+      const can = !bought && state.durians >= u.cost;
+      const div = document.createElement("div");
+      div.className = "shop-item" + (bought ? " purchased" : (!can ? " unaffordable" : ""));
+      div.innerHTML = `
+        <div class="item-header">
+          <span class="item-name">${u.emoji} ${u.name}${bought?" ✓":""}</span>
+          ${!bought ? `<span class="item-cost">${fmt(u.cost)} 🍈</span>` : ""}
+        </div>
+        <div class="item-desc">${u.desc}</div>`;
+      if (can) div.onclick = () => buyUpgrade(u.id);
+      el.appendChild(div);
+    });
+    if (!shown) {
+      el.innerHTML = `<p style="font-size:0.78rem;color:#3a5a7a;padding:14px;text-align:center;">
+        Earn more durians to unlock upgrades!
+      </p>`;
+    }
+  }
+
+  function renderShop() {
+    const el = document.getElementById("shop-tab");
+    el.innerHTML = "";
+    BUILDINGS.forEach(b => {
+      const cost = buildingCost(b.id);
+      const can = state.durians >= cost;
+      const owned = state.buildings[b.id];
+      const rate = (b.baseRate * state.prodMult).toFixed(2);
+      const div = document.createElement("div");
+      div.className = "shop-item" + (can ? "" : " unaffordable");
+      div.innerHTML = `
+        <div class="item-header">
+          <span class="item-name">${b.emoji} ${b.name}${owned>0?` <small style="color:#48cae4">(${owned})</small>`:""}</span>
+          <span class="item-cost">${fmt(cost)} 🍈</span>
+        </div>
+        <div class="item-desc">${b.desc}</div>
+        <div class="item-rate">+${rate}/sec each</div>`;
+      if (can) div.onclick = () => buyBuilding(b.id);
+      el.appendChild(div);
+    });
+  }
+
+  function switchTab(tab) {
+    document.querySelectorAll(".tab-btn").forEach((b, i) =>
+      b.classList.toggle("active", (i===0) === (tab==="upgrades")));
+    document.getElementById("upgrades-tab").classList.toggle("active", tab==="upgrades");
+    document.getElementById("shop-tab").classList.toggle("active", tab==="shop");
+  }
+
+  let notifTimer;
+  function notify(msg) {
+    const el = document.getElementById("notif");
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(notifTimer);
+    notifTimer = setTimeout(() => el.classList.remove("show"), 2600);
+  }
+
+  // ── BUBBLES ───────────────────────────────────────────────
+  const center = document.getElementById("center");
+  for (let i = 0; i < 12; i++) {
+    const b = document.createElement("div");
+    b.className = "bubble";
+    const size = 8 + Math.random() * 28;
+    b.style.cssText = `
+      width:${size}px; height:${size}px;
+      left:${Math.random()*100}%;
+      animation-duration:${6+Math.random()*10}s;
+      animation-delay:${Math.random()*8}s;
+    `;
+    center.appendChild(b);
+  }
+
+  // click handler on wrapper
+  document.getElementById("eel-wrapper").addEventListener("click", clickEel);
+
+  // ── GAME LOOP ─────────────────────────────────────────────
+  let last = performance.now();
+  function loop(now) {
+    const dt = (now - last) / 1000;
+    last = now;
+    const gained = perSecond() * dt;
+    state.durians += gained;
+    state.total   += gained;
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  render();
+  requestAnimationFrame(loop);
+</script>
+</body>
+</html>
